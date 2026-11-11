@@ -39,5 +39,5 @@ export async function updateMessage(mailboxId:string,id:string,changes:Record<st
 export async function storeMessage(mailboxId:string,providerId:string,direction:string,sender:string,recipients:string[],subject:string,body_text:string){
  const id=createHash('sha256').update(direction+':'+providerId).digest('hex');
  const ref=db().collection('mailboxes').doc(mailboxId).collection('messages').doc(id);
- await db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,subject,body_text,is_read:direction==='outgoing',created_at:new Date().toISOString()});});
+ return db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return false;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,subject,body_text,is_read:direction==='outgoing',created_at:new Date().toISOString()});return true;});
 }

@@ -1,3 +1,4 @@
+import { notifyMailbox } from '@/lib/push';
 import { listMailboxes,storeMessage } from '@/lib/db';
 import { Resend } from 'resend';
 import { error,reply } from '@/lib/common';
@@ -17,7 +18,8 @@ export async function POST(req:Request){
  const rows=(await listMailboxes()).filter(row=>row.active);
  for(const row of rows){
    if(!dest.includes(String(row.email).toLowerCase()))continue;
-   await storeMessage(row.id,ev.data.email_id,'incoming',mail.from,mail.to||[],mail.subject||'',mail.text||'[HTML-only email: content preview not available in this version]');
+   const created=await storeMessage(row.id,ev.data.email_id,'incoming',mail.from,mail.to||[],mail.subject||'',mail.text||'[HTML-only email: content preview not available in this version]');
+   if(created)await notifyMailbox(row.id,ev.data.email_id).catch(()=>console.error('[mail.push] notification failed'));
  }
  return reply({ok:true});
 }
