@@ -41,5 +41,5 @@ export async function storeMessage(mailboxId:string,providerId:string,direction:
  if(body_html)body_html=safeEmailHtml(body_html);
  const id=createHash('sha256').update(direction+':'+providerId).digest('hex');
  const ref=db().collection('mailboxes').doc(mailboxId).collection('messages').doc(id);
- return db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return false;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,subject,body_text,body_html,is_read:direction==='outgoing',created_at:new Date().toISOString()});return true;});
+ return db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return false;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,subject,body_text,body_html,body_html_version:2,is_read:direction==='outgoing',created_at:new Date().toISOString()});return true;});
 }

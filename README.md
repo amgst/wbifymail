@@ -27,7 +27,7 @@ Set the same server environment values on the host. The browser Firebase config 
 
 ## Limitations
 
-This is a webmail prototype, not an IMAP/SMTP server. Attachments, drafts, search, pagination, password resets, rate limiting, audit trails, spam filtering, and retention policies remain future work. HTML emails are sanitized and displayed in an isolated iframe with scripts, forms, and remote images blocked. Do not use for sensitive production correspondence until authentication and webhook behavior are reviewed and tested. No real email is sent by the automated checks.
+This is a webmail prototype, not an IMAP/SMTP server. Attachments, drafts, search, pagination, password resets, rate limiting, audit trails, spam filtering, and retention policies remain future work. HTML emails are sanitized and displayed in an isolated iframe with scripts and forms blocked; remote images stay blocked until Load images is selected for that message. Do not use for sensitive production correspondence until authentication and webhook behavior are reviewed and tested. No real email is sent by the automated checks.
 
 ## Mobile and Web Push
 
@@ -41,4 +41,6 @@ Open the site over HTTPS, sign in, and tap Enable email alerts to grant permissi
 
 ## HTML email
 
-Incoming webhooks store both text and HTML. The viewer sanitizes HTML, isolates it in a sandbox, and blocks remote images and scripts. Use View plain text for the text version. Opening a legacy incoming message without HTML attempts to recover it from Resend and save it to the owning mailbox; this depends on provider retention and the receiving API permission. Redeploy to Vercel to enable these changes online.
+Incoming webhooks store both text and HTML. The viewer sanitizes HTML, isolates it in a sandbox, and blocks scripts and blocks remote images until explicitly enabled for the current message. Use View plain text for the text version. Opening a legacy incoming message without HTML attempts to recover it from Resend and save it to the owning mailbox; this depends on provider retention and the receiving API permission. Redeploy to Vercel to enable these changes online.
+
+Image display: HTTPS/HTTP image URLs are retained in sanitized HTML. Load images enables external images for the selected message; Block images disables further loading. Opening older stored messages attempts to recover image URLs from Resend once, marked by body_html_version=2. Remote image loading may reveal that the message was opened. Embedded CID attachment images are not implemented.

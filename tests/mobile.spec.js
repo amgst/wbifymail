@@ -11,11 +11,14 @@ for(const width of [320,390,768,1440]){
   await page.goto('http://localhost:3001');
   await expect(page.getByRole('button',{name:/sender@example.com/})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  if(width===390)await page.screenshot({path:'test-results/mobile-inbox.png',fullPage:true});
   await page.getByRole('button',{name:/sender@example.com/}).click();
   await expect(page.locator('.readerbody')).toBeVisible();
+  if(width===390)await page.screenshot({path:'test-results/mobile-reader.png',fullPage:true});
   if(width<=760){await expect(page.locator('.maillist')).toBeHidden();await page.locator('.readerhead button').first().click();await expect(page.locator('.maillist')).toBeVisible();}
   await page.getByRole('button',{name:/Compose email/}).click();
   await expect(page.locator('.editor textarea')).toBeVisible();
+  if(width===390)await page.screenshot({path:'test-results/mobile-compose.png',fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
   await page.getByRole('button',{name:/Manage accounts/}).click();
   await expect(page.getByRole('heading',{name:'Manage your email accounts'})).toBeVisible();
