@@ -8,7 +8,7 @@ async function api(url:string,method='GET',body?:unknown){
  let data;
  try{data=text.trim()?JSON.parse(text):null;}catch{throw new Error(`The server returned an invalid response (HTTP ${r.status}). Refresh the page and try again.`);}
  if(!data||typeof data!=='object')throw new Error(`The server returned an empty or invalid response (HTTP ${r.status}). Refresh the page and try again.`);
- if(!r.ok)throw new Error(data.error||`Request failed (HTTP ${r.status})`);
+ if(!r.ok)throw new Error((data.error||`Request failed (HTTP ${r.status})`)+(data.requestId?` [${data.stage||'request'}; ref ${data.requestId}]`:''));
  return data;
 }
 export default function Home(){
@@ -17,13 +17,13 @@ export default function Home(){
  const [to,setTo]=useState(''),[subject,setSubject]=useState(''),[body,setBody]=useState(''),[sending,setSending]=useState(false);
  const [notice,setNotice]=useState(''),[admin,setAdmin]=useState(false),[mailboxes,setMailboxes]=useState<{email:string;role:string}[]>([]),[newEmail,setNewEmail]=useState(''),[newPassword,setNewPassword]=useState('');
  const [setup,setSetup]=useState(false),[setupSecret,setSetupSecret]=useState(''),[authBusy,setAuthBusy]=useState(false);
- function inform(text:string){setNotice(text);setTimeout(()=>setNotice(''),5500)}
+ function inform(text:string){setNotice(text);setTimeout(()=>setNotice(''),20000)}
  async function load(folderName=folder){try{const r=await api('/api/messages?folder='+folderName);setMessages(r.messages);setSelected(null)}catch(e){inform((e as Error).message)}}
  useEffect(()=>{api('/api/auth').then(r=>{setUser(r.user);if(r.user)api('/api/messages?folder=inbox').then(v=>setMessages(v.messages)).catch(e=>inform((e as Error).message));}).catch(e=>inform((e as Error).message)).finally(()=>setLoading(false))},[]);
  async function login(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/auth','POST',{email,password});const r=await api('/api/auth');setUser(r.user);setPassword('');load('inbox')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
  async function doSetup(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/setup','POST',{setupSecret,password});setSetup(false);setSetupSecret('');setPassword('');inform('Admin account created. You can log in now.')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
  async function logout(){await api('/api/auth','DELETE');setUser(null);setMessages([]);setSelected(null)}
- async function send(e:React.FormEvent){e.preventDefault();setSending(true);try{const r=await api('/api/send','POST',{to,subject,body});setCompose(false);setTo('');setSubject('');setBody('');inform(r.warning||'Email accepted for delivery');if(folder==='sent')load('sent')}catch(e){inform((e as Error).message)}finally{setSending(false)}}
+ async function send(e:React.FormEvent){e.preventDefault();setSending(true);try{const r=await api('/api/send','POST',{to,subject,body});setCompose(false);setTo('');setSubject('');setBody('');inform(r.warning||`Resend accepted the email. Delivery ID: ${r.providerId}`);if(folder==='sent')load('sent')}catch(e){inform((e as Error).name==='TimeoutError'?'Sending timed out. Check Resend email logs before retrying; the message may have been accepted.':(e as Error).message)}finally{setSending(false)}}
  async function openMail(m:Mail){setSelected(m);setCompose(false);if(!m.is_read){try{await api('/api/messages','PATCH',{id:m.id,read:true});setMessages(v=>v.map(x=>x.id===m.id?{...x,is_read:true}:x))}catch{}}}
  async function trashMail(){if(!selected)return;try{await api('/api/messages','PATCH',{id:selected.id,folder:'trash'});load()}catch(e){inform((e as Error).message)}}
  async function viewAdmin(){setAdmin(true);setCompose(false);setSelected(null);try{const r=await api('/api/mailboxes');setMailboxes(r.mailboxes)}catch(e){inform((e as Error).message)}}
