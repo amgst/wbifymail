@@ -4,6 +4,7 @@ for(const width of [320,390,768,1440]){
  test(`mailbox works at ${width}px`,async({page})=>{
   await page.setViewportSize({width,height:844});
   await page.route('**/api/auth',route=>route.fulfill({json:{user:{id:'test',email:'admin@wbify.com',role:'admin'}}}));
+  await page.route('**/api/messages/*',route=>route.fulfill({json:{message:messages[0]}}));
   await page.route('**/api/messages*',route=>route.fulfill({json:{messages}}));
   await page.route('**/api/push',route=>route.fulfill({json:{publicKey:null}}));
   await page.route('**/api/mailboxes',route=>route.fulfill({json:{mailboxes:[{email:'admin@wbify.com',role:'admin'}]}}));

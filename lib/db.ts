@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHash, randomUUID } from 'node:crypto';
+import { safeEmailHtml } from './email-html';
 export function db() {
  const projectId=process.env.FIREBASE_PROJECT_ID;
  const clientEmail=process.env.FIREBASE_CLIENT_EMAIL;
@@ -33,11 +34,12 @@ export async function createMailbox(email:string,password_hash:string,role='user
 }
 export async function listMessages(mailboxId:string,folder:string){
  const rows=await db().collection('mailboxes').doc(mailboxId).collection('messages').where('folder','==',folder).orderBy('created_at','desc').limit(200).get();
- return rows.docs.map(d=>({...d.data(),id:d.id}));
+ return rows.docs.map(d=>{const data=d.data();return {...data,id:d.id,body_html:typeof data.body_html==='string'?safeEmailHtml(data.body_html):null};});
 }
 export async function updateMessage(mailboxId:string,id:string,changes:Record<string,unknown>){await db().collection('mailboxes').doc(mailboxId).collection('messages').doc(id).update(changes);}
-export async function storeMessage(mailboxId:string,providerId:string,direction:string,sender:string,recipients:string[],subject:string,body_text:string){
+export async function storeMessage(mailboxId:string,providerId:string,direction:string,sender:string,recipients:string[],subject:string,body_text:string,body_html:string|null=null){
+ if(body_html)body_html=safeEmailHtml(body_html);
  const id=createHash('sha256').update(direction+':'+providerId).digest('hex');
  const ref=db().collection('mailboxes').doc(mailboxId).collection('messages').doc(id);
- return db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return false;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,subject,body_text,is_read:direction==='outgoing',created_at:new Date().toISOString()});return true;});
+ return db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return false;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,subject,body_text,body_html,is_read:direction==='outgoing',created_at:new Date().toISOString()});return true;});
 }

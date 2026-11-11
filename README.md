@@ -27,7 +27,7 @@ Set the same server environment values on the host. The browser Firebase config 
 
 ## Limitations
 
-This is a webmail prototype, not an IMAP/SMTP server. Attachments, drafts, search, pagination, password resets, rate limiting, audit trails, spam filtering, and retention policies remain future work. HTML-only emails show a placeholder. Do not use for sensitive production correspondence until authentication and webhook behavior are reviewed and tested. No real email is sent by the automated checks.
+This is a webmail prototype, not an IMAP/SMTP server. Attachments, drafts, search, pagination, password resets, rate limiting, audit trails, spam filtering, and retention policies remain future work. HTML emails are sanitized and displayed in an isolated iframe with scripts, forms, and remote images blocked. Do not use for sensitive production correspondence until authentication and webhook behavior are reviewed and tested. No real email is sent by the automated checks.
 
 ## Mobile and Web Push
 
@@ -38,3 +38,7 @@ Web Push is delivered from the incoming Resend webhook after a new message is st
 Set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, and VAPID_SUBJECT in Vercel Production, then redeploy. A local key pair is generated in .env.local; copy it privately to Vercel. Keep keys stable between deployments. To generate a replacement pair manually, use the web-push library's generateVAPIDKeys(), then update both values together; existing devices need to disable and re-enable alerts after rotation.
 
 Open the site over HTTPS, sign in, and tap Enable email alerts to grant permission. On iPhone/iPad (16.4+), first use Share > Add to Home Screen and open that installed app. Delivery depends on browser/OS notification permissions and connectivity. Generic alerts contain no sender, subject, or body. Each subscription belongs to the signed-in mailbox; sign-out removes that device subscription. Expired subscriptions are removed after the push provider returns 404/410. Notification sending is best effort and does not block email storage. No email content is cached by the service worker.
+
+## HTML email
+
+Incoming webhooks store both text and HTML. The viewer sanitizes HTML, isolates it in a sandbox, and blocks remote images and scripts. Use View plain text for the text version. Opening a legacy incoming message without HTML attempts to recover it from Resend and save it to the owning mailbox; this depends on provider retention and the receiving API permission. Redeploy to Vercel to enable these changes online.
