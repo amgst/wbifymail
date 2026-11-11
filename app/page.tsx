@@ -2,7 +2,15 @@
 import {useEffect,useState} from 'react';
 type User={id:string;email:string;role:string};
 type Mail={id:string;sender:string;recipients:string[];subject:string;body_text:string;created_at:string;is_read:boolean;direction:string};
-async function api(url:string,method='GET',body?:unknown){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(30000)});const data=await r.json();if(!r.ok)throw new Error(data.error||'Request failed');return data;}
+async function api(url:string,method='GET',body?:unknown){
+ const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(30000)});
+ const text=await r.text();
+ let data;
+ try{data=text.trim()?JSON.parse(text):null;}catch{throw new Error(`The server returned an invalid response (HTTP ${r.status}). Refresh the page and try again.`);}
+ if(!data||typeof data!=='object')throw new Error(`The server returned an empty or invalid response (HTTP ${r.status}). Refresh the page and try again.`);
+ if(!r.ok)throw new Error(data.error||`Request failed (HTTP ${r.status})`);
+ return data;
+}
 export default function Home(){
  const [user,setUser]=useState<User|null>(null),[loading,setLoading]=useState(true),[email,setEmail]=useState('admin@wbify.com'),[password,setPassword]=useState('');
  const [folder,setFolder]=useState('inbox'),[messages,setMessages]=useState<Mail[]>([]),[selected,setSelected]=useState<Mail|null>(null),[compose,setCompose]=useState(false);
@@ -11,7 +19,7 @@ export default function Home(){
  const [setup,setSetup]=useState(false),[setupSecret,setSetupSecret]=useState(''),[authBusy,setAuthBusy]=useState(false);
  function inform(text:string){setNotice(text);setTimeout(()=>setNotice(''),5500)}
  async function load(folderName=folder){try{const r=await api('/api/messages?folder='+folderName);setMessages(r.messages);setSelected(null)}catch(e){inform((e as Error).message)}}
- useEffect(()=>{api('/api/auth').then(r=>{setUser(r.user);if(r.user)api('/api/messages?folder=inbox').then(v=>setMessages(v.messages)).catch(()=>{});}).finally(()=>setLoading(false))},[]);
+ useEffect(()=>{api('/api/auth').then(r=>{setUser(r.user);if(r.user)api('/api/messages?folder=inbox').then(v=>setMessages(v.messages)).catch(e=>inform((e as Error).message));}).catch(e=>inform((e as Error).message)).finally(()=>setLoading(false))},[]);
  async function login(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/auth','POST',{email,password});const r=await api('/api/auth');setUser(r.user);setPassword('');load('inbox')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
  async function doSetup(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/setup','POST',{setupSecret,password});setSetup(false);setSetupSecret('');setPassword('');inform('Admin account created. You can log in now.')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
  async function logout(){await api('/api/auth','DELETE');setUser(null);setMessages([]);setSelected(null)}
