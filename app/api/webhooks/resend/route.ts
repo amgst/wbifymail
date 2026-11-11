@@ -1,4 +1,4 @@
-import { db } from '@/lib/db';
+import { listMailboxes,storeMessage } from '@/lib/db';
 import { Resend } from 'resend';
 import { error,reply } from '@/lib/common';
 export async function POST(req:Request){
@@ -14,10 +14,10 @@ export async function POST(req:Request){
  if(fetchError||!received)return error('Could not retrieve incoming email',502);
  const mail=received as unknown as {from:string;to:string[];cc?:string[];subject:string;text?:string|null;html?:string|null};
  const dest=[...(mail.to||[]),...(mail.cc||[])].map(v=>v.toLowerCase());
- const rows=await db()`SELECT id,email FROM mailboxes WHERE active=true`;
+ const rows=(await listMailboxes()).filter(row=>row.active);
  for(const row of rows){
    if(!dest.includes(String(row.email).toLowerCase()))continue;
-   await db()`INSERT INTO messages(mailbox_id,provider_id,direction,folder,sender,recipients,subject,body_text) VALUES(${row.id},${ev.data.email_id},'incoming','inbox',${mail.from},${mail.to||[]},${mail.subject||''},${mail.text||'[HTML-only email: content preview not available in this version]'}) ON CONFLICT(mailbox_id,direction,provider_id) DO NOTHING`;
+   await storeMessage(row.id,ev.data.email_id,'incoming',mail.from,mail.to||[],mail.subject||'',mail.text||'[HTML-only email: content preview not available in this version]');
  }
  return reply({ok:true});
 }

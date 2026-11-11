@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
-import { db } from './db';
+import { mailboxById } from './db';
 import { demoMode, demoUser } from './demo';
 const COOKIE = 'wbify_session';
 function key() { const secret=process.env.SESSION_SECRET; if(!secret || secret.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters'); return new TextEncoder().encode(secret); }
@@ -10,8 +10,8 @@ export async function session() {
     const token=(await cookies()).get(COOKIE)?.value; if(!token) return null;
     const {payload}=await jwtVerify(token,key(),{algorithms:['HS256']});
     const id=String(payload.sub||''); if (!id) return null;
-    const rows=await db()`SELECT id, email, role FROM mailboxes WHERE id=${id} AND active=true LIMIT 1`;
-    return rows[0] ? {id:String(rows[0].id),email:String(rows[0].email),role:String(rows[0].role)} : null;
+    const row=await mailboxById(id);
+    return row?.active ? {id:row.id,email:row.email,role:row.role} : null;
   } catch {return null;}
 }
 export async function startSession(id:string) {

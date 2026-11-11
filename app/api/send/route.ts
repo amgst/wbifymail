@@ -1,5 +1,5 @@
 import { session,sameOrigin } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { storeMessage } from '@/lib/db';
 import { error,reply } from '@/lib/common';
 import { Resend } from 'resend';
 import { z } from 'zod';
@@ -13,6 +13,6 @@ export async function POST(req:Request){
  const resend=new Resend(process.env.RESEND_API_KEY);
  const {data,error:sendError}=await resend.emails.send({from:u.email,to:[p.data.to],subject:p.data.subject,text:p.data.body});
  if(sendError||!data?.id)return error(sendError?.message||'Delivery provider rejected message',502);
- try{await db()`INSERT INTO messages(mailbox_id,provider_id,direction,folder,sender,recipients,subject,body_text,is_read) VALUES(${u.id},${data.id},'outgoing','sent',${u.email},${[p.data.to]},${p.data.subject},${p.data.body},true)`;}catch{return reply({ok:true,providerId:data.id,warning:'Email accepted by Resend but local sent-history storage failed'});}
+ try{await storeMessage(u.id,data.id,'outgoing',u.email,[p.data.to],p.data.subject,p.data.body);}catch{return reply({ok:true,providerId:data.id,warning:'Email accepted by Resend but local sent-history storage failed'});}
  return reply({ok:true,providerId:data.id});
 }
