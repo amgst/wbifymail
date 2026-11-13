@@ -43,3 +43,8 @@ export async function storeMessage(mailboxId:string,providerId:string,direction:
  const ref=db().collection('mailboxes').doc(mailboxId).collection('messages').doc(id);
  return db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return false;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,subject,body_text,body_html,body_html_version:2,is_read:direction==='outgoing',created_at:new Date().toISOString()});return true;});
 }
+
+export async function unreadCount(mailboxId:string){
+ const rows=await db().collection('mailboxes').doc(mailboxId).collection('messages').where('folder','==','inbox').get();
+ return rows.docs.filter(doc=>doc.data().is_read===false).length;
+}

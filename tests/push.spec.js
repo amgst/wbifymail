@@ -3,7 +3,7 @@ const ts=require('typescript'),fs=require('fs');
 function loadPush({configured=true,status}={}){
  let sent=0,removed=0;
  const subscription={data:()=>({endpoint:'https://fcm.googleapis.com/fcm/send/test',keys:{auth:'test',p256dh:'test'}}),ref:{delete:async()=>removed++}};
- const mocks={'./db':{db:()=>({collection:()=>({where:()=>({get:async()=>({docs:[subscription]})})})})},'web-push':{setVapidDetails:()=>{},sendNotification:async()=>{sent++;if(status)throw{statusCode:status};}}};
+ const mocks={'./db':{unreadCount:async()=>3,db:()=>({collection:()=>({where:()=>({get:async()=>({docs:[subscription]})})})})},'web-push':{setVapidDetails:()=>{},sendNotification:async()=>{sent++;if(status)throw{statusCode:status};}}};
  const source=ts.transpileModule(fs.readFileSync('lib/push.ts','utf8'),{compilerOptions:{esModuleInterop:true,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  const exports={};new Function('require','exports','process','console',source)(name=>mocks[name],exports,{env:configured?{VAPID_PUBLIC_KEY:'public',VAPID_PRIVATE_KEY:'private',VAPID_SUBJECT:'mailto:test@example.com'}:{}},{error:()=>{}});
  return{...exports,counts:()=>({sent,removed})};
@@ -13,3 +13,13 @@ test('push skips delivery when not configured',async()=>{const p=loadPush({confi
 test('expired subscriptions are removed',async()=>{const p=loadPush({status:410});await p.notifyMailbox('mailbox','message');expect(p.counts()).toEqual({sent:1,removed:1});});
 test('transient errors keep the subscription',async()=>{const p=loadPush({status:503});await p.notifyMailbox('mailbox','message');expect(p.counts()).toEqual({sent:1,removed:0});});
 
+const vm=require('node:vm');
+function worker({count,badgeFails=false}){
+ const handlers={},alerts=[],badges=[];
+ const self={addEventListener:(name,handler)=>handlers[name]=handler,registration:{showNotification:async(...args)=>alerts.push(args)},navigator:{setAppBadge:async n=>{badges.push(n);if(badgeFails)throw Error('denied');},clearAppBadge:async()=>badges.push(0)}};
+ vm.runInNewContext(fs.readFileSync('public/sw.js','utf8'),{self,URL});
+ return {alerts,badges,run:()=>new Promise((resolve,reject)=>handlers.push({data:{json:()=>({unreadCount:count})},waitUntil:p=>p.then(resolve,reject)}))};
+}
+test('background push sets the unread badge and shows an alert',async()=>{const w=worker({count:3});await w.run();expect(w.badges).toEqual([3]);expect(w.alerts).toHaveLength(1);});
+test('zero unread clears the badge',async()=>{const w=worker({count:0});await w.run();expect(w.badges).toEqual([0]);});
+test('badge failures do not prevent visible notifications',async()=>{const w=worker({count:3,badgeFails:true});await w.run();expect(w.alerts).toHaveLength(1);});

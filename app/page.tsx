@@ -5,6 +5,10 @@ import EmailBody from './email-body';
 import Icon from './icons';
 type User={id:string;email:string;role:string};
 type Mail={id:string;sender:string;recipients:string[];subject:string;body_text:string;body_html?:string|null;body_html_version?:number;created_at:string;is_read:boolean;direction:string};
+async function syncBadge(count:number){
+ const badge=navigator as Navigator & {setAppBadge?:(count:number)=>Promise<void>;clearAppBadge?:()=>Promise<void>};
+ try{if(count>0)await badge.setAppBadge?.(count);else await badge.clearAppBadge?.();}catch{}
+}
 async function api(url:string,method='GET',body?:unknown){
  const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(30000)});
  const text=await r.text();
@@ -12,6 +16,7 @@ async function api(url:string,method='GET',body?:unknown){
  try{data=text.trim()?JSON.parse(text):null;}catch{throw new Error(`The server returned an invalid response (HTTP ${r.status}). Refresh the page and try again.`);}
  if(!data||typeof data!=='object')throw new Error(`The server returned an empty or invalid response (HTTP ${r.status}). Refresh the page and try again.`);
  if(!r.ok)throw new Error((data.error||`Request failed (HTTP ${r.status})`)+(data.requestId?` [${data.stage||'request'}; ref ${data.requestId}]`:''));
+ if(typeof data.unreadCount==='number')await syncBadge(data.unreadCount);
  return data;
 }
 export default function Home(){
@@ -28,13 +33,13 @@ export default function Home(){
   let cancelled=false,inFlight=false;
   async function refresh(){if(inFlight||document.visibilityState==='hidden'||compose||admin)return;inFlight=true;try{const r=await api('/api/messages?folder='+folder);if(!cancelled)setMessages(r.messages);}catch{}finally{inFlight=false;}}
   const interval=setInterval(refresh,30000);document.addEventListener('visibilitychange',refresh);
-  function openInbox(event:MessageEvent){if(event.data?.type==='OPEN_INBOX'){setFolder('inbox');setCompose(false);setAdmin(false);setSelected(null);}}
+  function openInbox(event:MessageEvent){if(event.data?.type==='OPEN_INBOX'){setFolder('inbox');setCompose(false);setAdmin(false);setSelected(null);void refresh();}}
   navigator.serviceWorker?.addEventListener('message',openInbox);
   return()=>{cancelled=true;clearInterval(interval);document.removeEventListener('visibilitychange',refresh);navigator.serviceWorker?.removeEventListener('message',openInbox);};
  },[user,folder,compose,admin]);
  async function login(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/auth','POST',{email,password});const r=await api('/api/auth');setUser(r.user);setPassword('');load('inbox')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
  async function doSetup(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/setup','POST',{setupSecret,password});setSetup(false);setSetupSecret('');setPassword('');inform('Admin account created. You can log in now.')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
- async function logout(){try{if('serviceWorker' in navigator){const registration=await navigator.serviceWorker.getRegistration();const sub=await registration?.pushManager?.getSubscription();if(sub){await api('/api/push','DELETE',{endpoint:sub.endpoint});await sub.unsubscribe();}}await api('/api/auth','DELETE');setUser(null);setMessages([]);setSelected(null);}catch(e){inform((e as Error).message)}}
+ async function logout(){try{if('serviceWorker' in navigator){const registration=await navigator.serviceWorker.getRegistration();const sub=await registration?.pushManager?.getSubscription();if(sub){await api('/api/push','DELETE',{endpoint:sub.endpoint});await sub.unsubscribe();}}await api('/api/auth','DELETE');await syncBadge(0);setUser(null);setMessages([]);setSelected(null);}catch(e){inform((e as Error).message)}}
  async function send(e:React.FormEvent){e.preventDefault();setSending(true);try{const r=await api('/api/send','POST',{to,subject,body});setCompose(false);setTo('');setSubject('');setBody('');inform(r.warning||`Resend accepted the email. Delivery ID: ${r.providerId}`);if(folder==='sent')load('sent')}catch(e){inform((e as Error).name==='TimeoutError'?'Sending timed out. Check Resend email logs before retrying; the message may have been accepted.':(e as Error).message)}finally{setSending(false)}}
  async function openMail(m:Mail){setSelected(m);setCompose(false);if(m.direction==='incoming'&&m.body_html_version!==2){api('/api/messages/'+m.id).then(r=>{setSelected(current=>current?.id===m.id?{...r.message,is_read:true}:current);setMessages(items=>items.map(item=>item.id===m.id?{...r.message,is_read:true}:item));}).catch(e=>inform((e as Error).message));}if(!m.is_read){try{await api('/api/messages','PATCH',{id:m.id,read:true});setMessages(v=>v.map(x=>x.id===m.id?{...x,is_read:true}:x))}catch{}}}
  async function trashMail(){if(!selected)return;try{await api('/api/messages','PATCH',{id:selected.id,folder:'trash'});load()}catch(e){inform((e as Error).message)}}
