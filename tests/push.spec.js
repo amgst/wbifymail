@@ -23,3 +23,23 @@ function worker({count,badgeFails=false}){
 test('background push sets the unread badge and shows an alert',async()=>{const w=worker({count:3});await w.run();expect(w.badges).toEqual([3]);expect(w.alerts).toHaveLength(1);});
 test('zero unread clears the badge',async()=>{const w=worker({count:0});await w.run();expect(w.badges).toEqual([0]);});
 test('badge failures do not prevent visible notifications',async()=>{const w=worker({count:3,badgeFails:true});await w.run();expect(w.alerts).toHaveLength(1);});
+function loadSubscriptionHelper(){
+ const source=ts.transpileModule(fs.readFileSync('app/notifications.tsx','utf8')+'\nexport {currentSubscription};',{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+ const exports={};new Function('require','exports','atob',source)(()=>({}),exports,atob);return exports.currentSubscription;
+}
+test('subscription is renewed after server keys change',async()=>{
+ let unsubscribed=0,subscribed=0;
+ const old={options:{applicationServerKey:Uint8Array.from([1,2]).buffer},unsubscribe:async()=>unsubscribed++};
+ const replacement={endpoint:'new'};
+ const registration={pushManager:{getSubscription:async()=>old,subscribe:async options=>{subscribed++;expect(Array.from(options.applicationServerKey)).toEqual([3,4]);return replacement;}}};
+ expect(await loadSubscriptionHelper()(registration,'AwQ')).toBe(replacement);
+ expect({unsubscribed,subscribed}).toEqual({unsubscribed:1,subscribed:1});
+});
+test('matching subscription is preserved',async()=>{
+ const old={options:{applicationServerKey:Uint8Array.from([3,4]).buffer},unsubscribe:async()=>{throw Error('must preserve');}};
+ expect(await loadSubscriptionHelper()({pushManager:{getSubscription:async()=>old}},'AwQ')).toBe(old);
+});
+test('test delivery exposes provider rejection to the caller',async()=>{
+ const p=loadPush({status:403});
+ await expect(p.sendDeviceNotification({endpoint:'https://fcm.googleapis.com/test',keys:{auth:'test',p256dh:'test'}},{test:true})).rejects.toEqual({statusCode:403});
+});
