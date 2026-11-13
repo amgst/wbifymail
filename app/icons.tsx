@@ -1,3 +1,39 @@
 import type {CSSProperties} from 'react';
-const paths:Record<string,string>={inbox:'M4 4h16v16H4z M4 13h5l2 3h2l2-3h5',sent:'m3 11 18-8-8 18-2-8-8-2Z M11 13 21 3',trash:'M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7',users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M16 3a4 4 0 0 1 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',plus:'M12 5v14 M5 12h14',refresh:'M20 7v5h-5 M4 17v-5h5 M6 7a7 7 0 0 1 11.5-2L20 8 M4 16l2.5 3A7 7 0 0 0 18 17',back:'m12 5-7 7 7 7 M5 12h15',mail:'M3 5h18v14H3z m0 0 9 8 9-8',close:'m6 6 12 12 M6 18 18 6',reply:'m9 4-6 6 6 6 M3 10h10a7 7 0 0 1 7 7v3',logout:'M9 3H4v18h5 M10 12h11 m-4-4 4 4-4 4',chevron:'m8 10 4 4 4-4'};
-export default function Icon({name,size=20,style}:{name:string;size?:number;style?:CSSProperties}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}><path d={paths[name]||paths.mail}/></svg>;}
+const paths:Record<string,string>={
+ inbox:'M22 12h-6l-2 3h-4l-2-3H2 M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
+ sent:'m22 2-7 20-4-9-9-4Z M22 2 11 13',
+ trash:'M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6',
+ archive:'M3 4h18v4H3z M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8 M10 12h4',
+ star:'m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+ users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M16 3.13a4 4 0 0 1 0 7.75 M22 21v-2a4 4 0 0 0-3-3.87 M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
+ plus:'M12 5v14 M5 12h14',
+ pencil:'M12 20h9 M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z',
+ refresh:'M21 12a9 9 0 0 1-15.5 6.2L3 16 M3 21v-5h5 M3 12a9 9 0 0 1 15.5-6.2L21 8 M21 3v5h-5',
+ back:'m12 19-7-7 7-7 M19 12H5',
+ mail:'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z m18 2-10 7L2 6',
+ mailopen:'M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10',
+ close:'M18 6 6 18 M6 6l12 12',
+ reply:'M9 17 4 12l5-5 M20 18v-2a4 4 0 0 0-4-4H4',
+ replyall:'M7 17 2 12l5-5 M12 17l-5-5 5-5 M22 18v-2a4 4 0 0 0-4-4H7',
+ forward:'m15 17 5-5-5-5 M4 18v-2a4 4 0 0 1 4-4h12',
+ logout:'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
+ chevron:'m6 9 6 6 6-6',
+ chevronleft:'m15 18-6-6 6-6',
+ chevronright:'m9 18 6-6-6-6',
+ search:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z m10 2-4.35-4.35',
+ settings:'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+ menu:'M4 6h16 M4 12h16 M4 18h16',
+ keyboard:'M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z M6 9h.01 M10 9h.01 M14 9h.01 M18 9h.01 M7 13h.01 M17 13h.01 M8 16h8',
+ restore:'M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5',
+ minimize:'M5 12h14',
+ expand:'M15 3h6v6 M9 21H3v-6 M21 3l-7 7 M3 21l7-7',
+ check:'M20 6 9 17l-5-5',
+ image:'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z m12 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21',
+ text:'M17 6.1H3 M21 12.1H3 M15.1 18H3',
+ print:'M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z',
+ bell:'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0',
+ shield:'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z',
+};
+export default function Icon({name,size=20,style,filled}:{name:string;size?:number;style?:CSSProperties;filled?:boolean}){
+ return <svg width={size} height={size} viewBox="0 0 24 24" fill={filled?'currentColor':'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}><path d={paths[name]||paths.mail}/></svg>;
+}

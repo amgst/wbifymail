@@ -1,51 +1,41 @@
 'use client';
-import {useEffect,useState} from 'react';
-import Notifications from './notifications';
-import EmailBody from './email-body';
-import Icon from './icons';
-type User={id:string;email:string;role:string};
-type Mail={id:string;sender:string;recipients:string[];subject:string;body_text:string;body_html?:string|null;body_html_version?:number;created_at:string;is_read:boolean;direction:string};
-async function syncBadge(count:number){
- const badge=navigator as Navigator & {setAppBadge?:(count:number)=>Promise<void>;clearAppBadge?:()=>Promise<void>};
- try{if(count>0)await badge.setAppBadge?.(count);else await badge.clearAppBadge?.();}catch{}
-}
-async function api(url:string,method='GET',body?:unknown){
- const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(30000)});
- const text=await r.text();
- let data;
- try{data=text.trim()?JSON.parse(text):null;}catch{throw new Error(`The server returned an invalid response (HTTP ${r.status}). Refresh the page and try again.`);}
- if(!data||typeof data!=='object')throw new Error(`The server returned an empty or invalid response (HTTP ${r.status}). Refresh the page and try again.`);
- if(!r.ok)throw new Error((data.error||`Request failed (HTTP ${r.status})`)+(data.requestId?` [${data.stage||'request'}; ref ${data.requestId}]`:''));
- if(typeof data.unreadCount==='number')await syncBadge(data.unreadCount);
- return data;
-}
-export default function Home(){
- const [user,setUser]=useState<User|null>(null),[loading,setLoading]=useState(true),[email,setEmail]=useState('admin@wbify.com'),[password,setPassword]=useState('');
- const [folder,setFolder]=useState('inbox'),[messages,setMessages]=useState<Mail[]>([]),[selected,setSelected]=useState<Mail|null>(null),[compose,setCompose]=useState(false);
- const [to,setTo]=useState(''),[subject,setSubject]=useState(''),[body,setBody]=useState(''),[sending,setSending]=useState(false);
- const [notice,setNotice]=useState(''),[admin,setAdmin]=useState(false),[mailboxes,setMailboxes]=useState<{email:string;role:string}[]>([]),[newEmail,setNewEmail]=useState(''),[newPassword,setNewPassword]=useState('');
- const [setup,setSetup]=useState(false),[setupSecret,setSetupSecret]=useState(''),[authBusy,setAuthBusy]=useState(false);
- function inform(text:string){setNotice(text);setTimeout(()=>setNotice(''),20000)}
- async function load(folderName=folder){try{const r=await api('/api/messages?folder='+folderName);setMessages(r.messages);setSelected(null)}catch(e){inform((e as Error).message)}}
- useEffect(()=>{api('/api/auth').then(r=>{setUser(r.user);if(r.user)api('/api/messages?folder=inbox').then(v=>setMessages(v.messages)).catch(e=>inform((e as Error).message));}).catch(e=>inform((e as Error).message)).finally(()=>setLoading(false))},[]);
- useEffect(()=>{
-  if(!user)return;
-  let cancelled=false,inFlight=false;
-  async function refresh(){if(inFlight||document.visibilityState==='hidden'||compose||admin)return;inFlight=true;try{const r=await api('/api/messages?folder='+folder);if(!cancelled)setMessages(r.messages);}catch{}finally{inFlight=false;}}
-  const interval=setInterval(refresh,30000);document.addEventListener('visibilitychange',refresh);
-  function openInbox(event:MessageEvent){if(event.data?.type==='OPEN_INBOX'){setFolder('inbox');setCompose(false);setAdmin(false);setSelected(null);void refresh();}}
-  navigator.serviceWorker?.addEventListener('message',openInbox);
-  return()=>{cancelled=true;clearInterval(interval);document.removeEventListener('visibilitychange',refresh);navigator.serviceWorker?.removeEventListener('message',openInbox);};
- },[user,folder,compose,admin]);
- async function login(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/auth','POST',{email,password});const r=await api('/api/auth');setUser(r.user);setPassword('');load('inbox')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
- async function doSetup(e:React.FormEvent){e.preventDefault();if(authBusy)return;setAuthBusy(true);try{await api('/api/setup','POST',{setupSecret,password});setSetup(false);setSetupSecret('');setPassword('');inform('Admin account created. You can log in now.')}catch(e){inform((e as Error).name==='TimeoutError'?'Request timed out. Try signing in first; account creation may have completed.':(e as Error).message)}finally{setAuthBusy(false)}}
- async function logout(){try{if('serviceWorker' in navigator){const registration=await navigator.serviceWorker.getRegistration();const sub=await registration?.pushManager?.getSubscription();if(sub){await api('/api/push','DELETE',{endpoint:sub.endpoint});await sub.unsubscribe();}}await api('/api/auth','DELETE');await syncBadge(0);setUser(null);setMessages([]);setSelected(null);}catch(e){inform((e as Error).message)}}
- async function send(e:React.FormEvent){e.preventDefault();setSending(true);try{const r=await api('/api/send','POST',{to,subject,body});setCompose(false);setTo('');setSubject('');setBody('');inform(r.warning||`Resend accepted the email. Delivery ID: ${r.providerId}`);if(folder==='sent')load('sent')}catch(e){inform((e as Error).name==='TimeoutError'?'Sending timed out. Check Resend email logs before retrying; the message may have been accepted.':(e as Error).message)}finally{setSending(false)}}
- async function openMail(m:Mail){setSelected(m);setCompose(false);if(m.direction==='incoming'&&m.body_html_version!==2){api('/api/messages/'+m.id).then(r=>{setSelected(current=>current?.id===m.id?{...r.message,is_read:true}:current);setMessages(items=>items.map(item=>item.id===m.id?{...r.message,is_read:true}:item));}).catch(e=>inform((e as Error).message));}if(!m.is_read){try{await api('/api/messages','PATCH',{id:m.id,read:true});setMessages(v=>v.map(x=>x.id===m.id?{...x,is_read:true}:x))}catch{}}}
- async function trashMail(){if(!selected)return;try{await api('/api/messages','PATCH',{id:selected.id,folder:'trash'});load()}catch(e){inform((e as Error).message)}}
- async function viewAdmin(){setAdmin(true);setCompose(false);setSelected(null);try{const r=await api('/api/mailboxes');setMailboxes(r.mailboxes)}catch(e){inform((e as Error).message)}}
- async function addMailbox(e:React.FormEvent){e.preventDefault();try{await api('/api/mailboxes','POST',{email:newEmail,password:newPassword});setNewEmail('');setNewPassword('');inform('Mailbox created');const r=await api('/api/mailboxes');setMailboxes(r.mailboxes)}catch(e){inform((e as Error).message)}}
- if(loading)return <div className="center">Loading WBIFY Mail…</div>;
- if(!user)return <main className="authbg"><div className="authcard"><div className="brandicon">W</div><h1>WBIFY Mail</h1><p>Your private business inbox, beautifully simple.</p><form onSubmit={setup?doSetup:login}>{!setup&&<label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)}/></label>}{setup&&<label>Setup secret<input type="password" required value={setupSecret} onChange={e=>setSetupSecret(e.target.value)} placeholder="From your Vercel environment variables"/></label>}<label>{setup?'New admin password (12+ characters)':'Password'}<input type="password" minLength={setup?12:undefined} required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter password"/></label><button className="primary" type="submit" disabled={authBusy}>{authBusy?(setup?'Creating account...':'Signing in...'):setup?'Create admin account':'Sign in'} <span>→</span></button></form><button className="textbutton" disabled={authBusy} onClick={()=>setSetup(!setup)}>{setup?'Back to sign in':'First time? Set up admin'}</button><small>Powered by Resend · Built for wbify.com</small>{notice&&<div className="notice">{notice}</div>}</div></main>;
- return <div className={"shell "+(compose?"is-composing ":"")+(selected?"is-reading ":"")}><aside className="sidebar"><header className="logo"><div className="brandicon small">W</div><div><strong>WBIFY</strong><span>MAIL</span></div></header><button className="composebtn" onClick={()=>{setCompose(true);setAdmin(false);setSelected(null)}}><Icon name="plus"/><span>Compose email</span></button><nav>{[['inbox','inbox','Inbox'],['sent','sent','Sent'],['trash','trash','Trash']].map(([key,icon,label])=><button key={key} className={!compose&&!admin&&folder===key?'active':''} onClick={()=>{setFolder(key);setAdmin(false);setCompose(false);load(key)}}><Icon name={icon}/><span>{label}</span>{key==='inbox'&&messages.filter(m=>!m.is_read&&folder==='inbox').length>0&&<em>{messages.filter(m=>!m.is_read).length}</em>}</button>)}{user.role==='admin'&&<button className={admin?'active':''} onClick={viewAdmin}><Icon name="users"/><span className="account-nav-label">Manage accounts</span></button>}</nav><details className="account-menu"><summary aria-label="Account settings"><span className="avatar">{user.email[0].toUpperCase()}</span><span className="account-summary"><b>{user.email.split('@')[0]}</b><small>{user.email}</small></span><Icon name="chevron" size={16}/></summary><div className="account-popover"><div className="account-identity"><b>Your mailbox</b><span>{user.email}</span></div><Notifications onError={inform}/><button className="signout-button" onClick={logout}><Icon name="logout" size={18}/>Sign out</button></div></details></aside><div className="workspace"><div className="topbar"><div><div className="eyebrow">{user.email}</div><h2>{admin?'Mail accounts':compose?'New message':selected?'Message':folder==='inbox'?'Inbox':folder==='sent'?'Sent mail':'Trash'}</h2></div><div className="topright"><span className="workspace-label">Your business, connected.</span><button aria-label="Refresh messages" title="Refresh messages" onClick={()=>admin?viewAdmin():load()}><Icon name="refresh"/></button></div></div>{notice&&<div className="notice banner">{notice}</div>}{admin?<section className="panel manage"><h3>Manage your email accounts</h3><p>Each mailbox has its own login and private inbox.</p><div className="accountlist">{mailboxes.map(m=><div key={m.email}><div className="avatar">{m.email[0].toUpperCase()}</div><b>{m.email}</b><span>{m.role}</span></div>)}</div><h3>Create a mailbox</h3><form className="gridform" onSubmit={addMailbox}><label>Email address<input type="email" required placeholder="support@wbify.com" value={newEmail} onChange={e=>setNewEmail(e.target.value)}/></label><label>Password (12+ characters)<input type="password" required minLength={12} value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></label><button className="primary" type="submit">Create mailbox</button></form></section>:compose?<section className="panel editor"><form onSubmit={send}><div className="editortitle">Compose a message <button type="button" aria-label="Close compose" onClick={()=>setCompose(false)}><Icon name="close"/></button></div><div className="fieldrow"><span>From</span><strong>{user.email}</strong></div><div className="fieldrow"><span>To</span><input type="email" required value={to} onChange={e=>setTo(e.target.value)} placeholder="recipient@example.com"/></div><div className="fieldrow"><span>Subject</span><input required maxLength={300} value={subject} onChange={e=>setSubject(e.target.value)} placeholder="What’s this about?"/></div><textarea required value={body} onChange={e=>setBody(e.target.value)} placeholder="Write your message here…"/><div className="editorbottom"><button className="primary" disabled={sending}>{sending?'Sending…':'Send message ↗'}</button><small>Sent securely via Resend</small></div></form></section>:<div className={"mailcontent "+(selected?"has-selection":"")}><section className="maillist"><div className="listhead"><strong>{folder==='inbox'?'Your messages':folder==='sent'?'Sent messages':'Deleted messages'}</strong><small>{messages.length} {messages.length===1?'message':'messages'}</small></div>{messages.length===0?<div className="empty"><div className="emptyicon"><Icon name="inbox" size={32}/></div><h3>{folder==='inbox'?'Your inbox is clear': 'No messages yet'}</h3><p>{folder==='inbox'?'New emails will appear here as soon as they arrive.':'Nothing to show in this folder.'}</p></div>:messages.map(m=><button className={'mailrow '+(selected?.id===m.id?'picked ':'')+(!m.is_read?'unread':'')} onClick={()=>openMail(m)} key={m.id}><span className="senderavatar">{(folder==='sent'?m.recipients[0]||'?':m.sender)[0]?.toUpperCase()}</span><span className="msgmeta"><span className="msgfirst"><b>{folder==='sent'?m.recipients.join(', '):m.sender}</b><time>{new Date(m.created_at).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</time></span><strong>{m.subject||'(No subject)'}</strong><span className="snippet">{m.body_text}</span></span></button>)}</section><section className="reader">{selected?<><div className="readerhead"><button onClick={()=>setSelected(null)}><Icon name="back" size={18}/>Back</button><button onClick={trashMail}><Icon name="trash" size={17}/>Move to trash</button></div><h2>{selected.subject}</h2><div className="readerfrom"><div className="senderavatar large">{selected.sender[0]?.toUpperCase()}</div><div><b>{selected.sender}</b><span>To: {selected.recipients.join(', ')}</span></div><time>{new Date(selected.created_at).toLocaleString()}</time></div><EmailBody key={selected.id} text={selected.body_text} html={selected.body_html}/><button className="outline" onClick={()=>{setTo(selected!.sender);setSubject(selected!.subject.toLowerCase().startsWith('re:')?selected!.subject:'Re: '+selected!.subject);setBody('\n\n--- Original message ---\n'+selected!.body_text);setCompose(true)}}><Icon name="reply" size={18}/>Reply</button></>:<div className="readerempty"><div className="emptyicon"><Icon name="mail" size={32}/></div><h3>A little space to focus</h3><p>Choose an email from the list to read it here.</p></div>}</section></div>}</div></div>;
+import { useCallback, useEffect, useState } from 'react';
+import Login from './mail/login';
+import MailApp from './mail/mail-app';
+import { api, errorText, type User } from './mail/lib';
+
+export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const check = useCallback(async () => {
+    try {
+      const r = await api('/api/auth');
+      setUser(r.user);
+      setError('');
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void check();
+  }, [check]);
+
+  if (loading)
+    return (
+      <div className="splash" role="status">
+        <span className="brandmark large">W</span>
+        <span className="muted">Loading WBIFY Mail…</span>
+      </div>
+    );
+  if (!user)
+    return (
+      <>
+        {error && <div className="inline-alert error floating" role="alert">{error}</div>}
+        <Login onSignedIn={check} />
+      </>
+    );
+  return <MailApp key={user.id} user={user} onSignedOut={() => setUser(null)} />;
 }

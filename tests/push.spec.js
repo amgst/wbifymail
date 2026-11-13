@@ -43,3 +43,14 @@ test('test delivery exposes provider rejection to the caller',async()=>{
  const p=loadPush({status:403});
  await expect(p.sendDeviceNotification({endpoint:'https://fcm.googleapis.com/test',keys:{auth:'test',p256dh:'test'}},{test:true})).rejects.toEqual({statusCode:403});
 });
+test('push suppresses system sound only when the visible app confirms its bell played',async()=>{
+ for(const played of [true,false]){
+  const handlers={},alerts=[];
+  class MessageChannel{constructor(){this.port1={close(){}};this.port2={reply:data=>this.port1.onmessage({data})};}}
+  const client={visibilityState:'visible',focused:true,postMessage:(_message,ports)=>ports[0].reply({played})};
+  const self={addEventListener:(name,fn)=>handlers[name]=fn,clients:{matchAll:async()=>[client]},registration:{showNotification:async(_title,options)=>alerts.push(options)},navigator:{}};
+  vm.runInNewContext(fs.readFileSync('public/sw.js','utf8'),{self,URL,MessageChannel,setTimeout,clearTimeout});
+  await new Promise((resolve,reject)=>handlers.push({data:{json:()=>({tag:'message'})},waitUntil:p=>p.then(resolve,reject)}));
+  expect(alerts[0].silent).toBe(played);
+ }
+});

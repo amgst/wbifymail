@@ -1,5 +1,6 @@
  'use client';
 import {useEffect,useState} from 'react';
+import {prepareMailSound,playMailSound} from './mail-sound';
 async function request(method:string,body?:unknown){
  const r=await fetch('/api/push',{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(20000)});
  const data=await r.json().catch(()=>null);
@@ -44,5 +45,5 @@ export default function Notifications({onError}:{onError?:(message:string)=>void
    setEnabled(true);setHelp('New-email alerts are on for this device.');
   }catch(e){failed(e);}finally{setBusy(false);}
  }
- return <div className="notifications"><button type="button" onClick={toggle} disabled={busy} aria-pressed={enabled}>{busy?'Please wait...':enabled?'Disable alerts':'Enable email alerts'}</button>{enabled&&<button type="button" onClick={testNotification} disabled={busy}>Test notification</button>}<p role="status">{help||(enabled?'Email alerts are enabled on this device.':'Turn on alerts for new emails. On Android, allow notifications for this app and Chrome in phone settings.')}</p></div>;
+ return <div className="notifications"><button type="button" onClick={toggle} disabled={busy} aria-pressed={enabled}>{busy?'Please wait...':enabled?'Disable alerts':'Enable email alerts'}</button>{enabled&&<button type="button" onClick={testNotification} disabled={busy}>Test notification</button>}<button type="button" onClick={()=>{prepareMailSound();setTimeout(()=>{if(!playMailSound())setHelp('Tap again to preview the sound. Check your media volume if it is quiet.');},50);}}>Preview alert sound</button><p role="status">{help||(enabled?'Email alerts are enabled on this device.':'Turn on alerts for new emails. On Android, allow notifications for this app and Chrome in phone settings.')}</p></div>;
 }

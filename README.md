@@ -25,9 +25,13 @@ Deploy this app at a public URL such as https://mail.wbify.com. Register https:/
 
 Set the same server environment values on the host. The browser Firebase config alone cannot authorize the Admin SDK. Outbound email needs RESEND_API_KEY; incoming email also needs RESEND_WEBHOOK_SECRET and Resend receiving configuration.
 
+## Mail features
+
+Inbox, Starred, Sent, Archive and Trash folders; multi-select bulk actions (archive, delete, restore, read/unread, star); permanent delete and Empty trash; reply, reply all and forward; multiple recipients with Cc/Bcc; a sender display name and signature; undo send (configurable delay); undo for archive/delete; light, dark and system themes; comfortable/compact density; and keyboard shortcuts (press ? in the app). Search filters the loaded folder (the newest 200 messages). The open draft autosaves to this browser's local storage. Settings are stored per browser.
+
 ## Limitations
 
-This is a webmail prototype, not an IMAP/SMTP server. Attachments, drafts, search, pagination, password resets, rate limiting, audit trails, spam filtering, and retention policies remain future work. HTML emails are sanitized and displayed in an isolated iframe with scripts and forms blocked; remote images stay blocked until Load images is selected for that message. Do not use for sensitive production correspondence until authentication and webhook behavior are reviewed and tested. No real email is sent by the automated checks.
+This is a webmail prototype, not an IMAP/SMTP server. Attachments, server-side drafts, full-text server search, pagination beyond 200 messages per folder, threading, password resets, rate limiting, audit trails, spam filtering, and retention policies remain future work. HTML emails are sanitized and displayed in an isolated iframe with scripts and forms blocked; remote images stay blocked until Load images is selected for that message. Do not use for sensitive production correspondence until authentication and webhook behavior are reviewed and tested. No real email is sent by the automated checks.
 
 ## Mobile and Web Push
 

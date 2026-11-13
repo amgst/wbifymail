@@ -20,6 +20,8 @@ for(const width of [320,390,768,1440]){
   await expect(page.locator('.editor textarea')).toBeVisible();
   if(width===390)await page.screenshot({path:'test-results/mobile-compose.png',fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.getByRole('button',{name:'Close compose'}).click();
+  if(width<=1024)await page.getByRole('button',{name:'Open menu'}).click();
   await page.getByRole('button',{name:/Manage accounts/}).click();
   await expect(page.getByRole('heading',{name:'Manage your email accounts'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
