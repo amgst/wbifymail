@@ -362,3 +362,6 @@ textarea.input{resize:vertical;line-height:1.5}
  .shell,.workspace,.mailcontent,.reader,.readerinner,.readerscroll{display:block;height:auto;overflow:visible;margin:0;border:0;box-shadow:none}
  .html-email{height:auto;min-height:100vh;border:0}
 }
+.notifications .toggle{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:550;cursor:pointer;margin-top:4px}
+.notifications .toggle input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.notifications .toggle-hint{font-size:12.5px;color:var(--text-3);margin:-4px 0 4px 26px}

@@ -67,9 +67,10 @@ export async function deleteMessages(mailboxId:string,ids:string[]|'trash'){
  const docs=ids==='trash'?(await messages.where('folder','==','trash').limit(450).get()).docs:(await store.getAll(...ids.map(id=>messages.doc(id)))).filter(d=>d.exists&&d.data()?.folder==='trash');
  if(!docs.length)return 0;const batch=store.batch();for(const doc of docs)batch.delete(doc.ref);await batch.commit();return docs.length;
 }
+export function messageDocId(direction:string,providerId:string){return createHash('sha256').update(direction+':'+providerId).digest('hex');}
 export async function storeMessage(mailboxId:string,providerId:string,direction:string,sender:string,recipients:string[],subject:string,body_text:string,body_html:string|null=null,cc:string[]=[]){
  if(body_html)body_html=safeEmailHtml(body_html);
- const id=createHash('sha256').update(direction+':'+providerId).digest('hex');
+ const id=messageDocId(direction,providerId);
  const ref=db().collection('mailboxes').doc(mailboxId).collection('messages').doc(id);
  return db().runTransaction(async tx=>{if((await tx.get(ref)).exists)return false;tx.create(ref,{provider_id:providerId,direction,folder:direction==='incoming'?'inbox':'sent',sender,recipients,cc,is_starred:false,subject,body_text,body_html,body_html_version:2,is_read:direction==='outgoing',created_at:new Date().toISOString()});return true;});
 }

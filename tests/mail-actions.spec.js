@@ -60,3 +60,10 @@ test('reply all fills recipients, and undo send cancels delivery',async({page})=
  expect(sent.to).toEqual(['sarah@northwind.io']);expect(sent.cc).toEqual(['ops@wbify.com']);
  await expect(page.getByText('Message sent')).toBeVisible();
 });
+test('opening a notification link shows that message and cleans the URL',async({page})=>{
+ await page.route('**/api/messages/*',r=>r.fulfill({json:{message:make()[1]}}));
+ await setup(page);
+ await page.goto('http://localhost:3001/?m='+id('b'));
+ await expect(page.getByRole('heading',{name:'Your receipt'})).toBeVisible();
+ expect(new URL(page.url()).search).toBe('');
+});

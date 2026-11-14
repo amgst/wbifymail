@@ -1,5 +1,5 @@
 import { notifyMailbox } from '@/lib/push';
-import { listMailboxes,storeMessage } from '@/lib/db';
+import { listMailboxes,storeMessage,messageDocId } from '@/lib/db';
 import { Resend } from 'resend';
 import { error,reply } from '@/lib/common';
 export async function POST(req:Request){
@@ -19,7 +19,7 @@ export async function POST(req:Request){
  for(const row of rows){
    if(!dest.includes(String(row.email).toLowerCase()))continue;
    const created=await storeMessage(row.id,ev.data.email_id,'incoming',mail.from,mail.to||[],mail.subject||'',mail.text||'HTML email - open to read the formatted message.',mail.html||null,mail.cc||[]);
-   if(created)await notifyMailbox(row.id,ev.data.email_id).catch(()=>console.error('[mail.push] notification failed'));
+   if(created)await notifyMailbox(row.id,{id:messageDocId('incoming',ev.data.email_id),sender:mail.from,subject:mail.subject||''}).catch(()=>console.error('[mail.push] notification failed'));
  }
  return reply({ok:true});
 }

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Icon from '../icons';
 import MailSound from '../mail-sound';
+import { restoreAlerts } from '../notifications';
 import MessageList, { IconButton, type BulkAction } from './message-list';
 import Reader from './reader';
 import Composer from './composer';
@@ -99,14 +100,24 @@ export default function MailApp({ user, onSignedOut }: { user: User; onSignedOut
     }
     const timer = setInterval(refresh, 30000);
     document.addEventListener('visibilitychange', refresh);
+    document.addEventListener('visibilitychange', clearAlerts);
+    restoreAlerts().then(clearAlerts).catch(() => {});
+    // Opened from a notification: /?m=<message id>
+    const linked = new URLSearchParams(location.search).get('m');
+    if (linked) {
+      history.replaceState(null, '', '/');
+      void openById(linked);
+    }
     function fromWorker(event: MessageEvent) {
       if (event.data?.type === 'OPEN_INBOX') go('inbox');
+      if (event.data?.type === 'OPEN_MESSAGE' && typeof event.data.id === 'string') void openById(event.data.id);
       if (event.data?.type === 'NEW_EMAIL' && folderRef.current === 'inbox') void refresh();
     }
     navigator.serviceWorker?.addEventListener('message', fromWorker);
     return () => {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', refresh);
+      document.removeEventListener('visibilitychange', clearAlerts);
       navigator.serviceWorker?.removeEventListener('message', fromWorker);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,6 +149,26 @@ export default function MailApp({ user, onSignedOut }: { user: User; onSignedOut
       setFolder(next);
     }
     void load(next);
+  }
+
+  /** Seen in the app, so system alerts for new mail are no longer needed. */
+  function clearAlerts() {
+    if (document.visibilityState !== 'visible' || folderRef.current !== 'inbox') return;
+    navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_ALERTS' });
+  }
+  async function openById(id: string) {
+    if (!/^[0-9a-f]{64}$/i.test(id)) return;
+    if (folderRef.current !== 'inbox') go('inbox');
+    setView('mail');
+    try {
+      const r = await api('/api/messages/' + id);
+      const m: Mail = { ...r.message, id };
+      setMessages(list => (list.some(x => x.id === id) ? list : [m, ...list]));
+      void openMail(m);
+      clearAlerts();
+    } catch (e) {
+      fail(e);
+    }
   }
 
   function patchLocal(ids: string[], change: Partial<Mail>) {

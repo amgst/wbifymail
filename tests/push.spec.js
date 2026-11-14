@@ -9,9 +9,9 @@ function loadPush({configured=true,status}={}){
  return{...exports,counts:()=>({sent,removed})};
 }
 test('push rejects arbitrary and local endpoints',()=>{const p=loadPush();for(const url of ['http://fcm.googleapis.com/x','https://127.0.0.1/x','https://example.com/x','https://fcm.googleapis.com.evil.test/x','https://user@fcm.googleapis.com/x'])expect(p.validPushEndpoint(url)).toBe(false);for(const url of ['https://fcm.googleapis.com/x','https://updates.push.services.mozilla.com/x','https://web.push.apple.com/x'])expect(p.validPushEndpoint(url)).toBe(true);});
-test('push skips delivery when not configured',async()=>{const p=loadPush({configured:false});await p.notifyMailbox('mailbox','message');expect(p.counts().sent).toBe(0);});
-test('expired subscriptions are removed',async()=>{const p=loadPush({status:410});await p.notifyMailbox('mailbox','message');expect(p.counts()).toEqual({sent:1,removed:1});});
-test('transient errors keep the subscription',async()=>{const p=loadPush({status:503});await p.notifyMailbox('mailbox','message');expect(p.counts()).toEqual({sent:1,removed:0});});
+test('push skips delivery when not configured',async()=>{const p=loadPush({configured:false});await p.notifyMailbox('mailbox',{id:'m1',sender:'a@b.c',subject:'Hi'});expect(p.counts().sent).toBe(0);});
+test('expired subscriptions are removed',async()=>{const p=loadPush({status:410});await p.notifyMailbox('mailbox',{id:'m1',sender:'a@b.c',subject:'Hi'});expect(p.counts()).toEqual({sent:1,removed:1});});
+test('transient errors keep the subscription',async()=>{const p=loadPush({status:503});await p.notifyMailbox('mailbox',{id:'m1',sender:'a@b.c',subject:'Hi'});expect(p.counts()).toEqual({sent:1,removed:0});});
 
 const vm=require('node:vm');
 function worker({count,badgeFails=false}){

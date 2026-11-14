@@ -5,13 +5,13 @@ import { reply,error } from '@/lib/common';
 import { pushConfigured,validPushEndpoint,sendDeviceNotification } from '@/lib/push';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-const subscriptionSchema=z.object({endpoint:z.string().max(4096).refine(validPushEndpoint),keys:z.object({p256dh:z.string().min(1).max(256),auth:z.string().min(1).max(256)})});
+const subscriptionSchema=z.object({endpoint:z.string().max(4096).refine(validPushEndpoint),keys:z.object({p256dh:z.string().min(1).max(256),auth:z.string().min(1).max(256)}),preview:z.boolean().optional()});
 export async function GET(){const user=await session();if(!user)return error('Unauthorized',401);return reply({publicKey:pushConfigured()?process.env.VAPID_PUBLIC_KEY:null});}
 export async function POST(req:Request){
  const user=await session();if(!user)return error('Unauthorized',401);if(!sameOrigin(req))return error('Invalid origin',403);
  if(demoMode()||!pushConfigured())return error('Notifications are not configured on the server.',503);
  const parsed=subscriptionSchema.safeParse(await req.json().catch(()=>null));if(!parsed.success)return error('Invalid push subscription');
- try{const id=createHash('sha256').update(parsed.data.endpoint).digest('hex');await db().collection('pushSubscriptions').doc(id).set({...parsed.data,mailboxId:user.id,updated_at:new Date().toISOString()});return reply({ok:true});}catch{return error('Could not enable notifications. Please try again.',503);}
+ try{const id=createHash('sha256').update(parsed.data.endpoint).digest('hex');await db().collection('pushSubscriptions').doc(id).set({...parsed.data,preview:parsed.data.preview!==false,mailboxId:user.id,updated_at:new Date().toISOString()});return reply({ok:true});}catch{return error('Could not enable notifications. Please try again.',503);}
 }
 export async function DELETE(req:Request){
  const user=await session();if(!user)return error('Unauthorized',401);if(!sameOrigin(req))return error('Invalid origin',403);
